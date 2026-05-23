@@ -9,6 +9,7 @@ import ResetPasswordPage from '../pages/ResetPasswordPage'
 import ChatPage from '../pages/ChatPage'
 import ProfilePage from '../pages/ProfilePage'
 import FriendsPage from '../pages/FriendsPage'
+import GroupsPage from '../pages/GroupsPage'
 import DashboardPage from '../pages/DashboardPage'
 import AiPage from '../pages/AiPage'
 import { authService } from '../services/authService'
@@ -69,6 +70,7 @@ const router = createBrowserRouter([
           // yet; one is created when the first message is sent.
           { path: '/chat/new/:userId', element: <ChatPage /> },
           { path: '/chat/:conversationId', element: <ChatPage /> },
+          { path: '/groups', element: <GroupsPage /> },
           { path: '/profile', element: <ProfilePage /> },
           { path: '/friends', element: <FriendsPage /> },
           { path: '/dashboard', element: <DashboardPage /> },

@@ -12,10 +12,13 @@
  */
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Bot, Send, Sparkles, AlertCircle, RefreshCw, Plus, Trash2 } from 'lucide-react'
+import { History } from 'lucide-react'
 import { cn } from '../utils/cn'
 import { Button } from '../components/ui/Button'
 import { Spinner } from '../components/ui/Spinner'
 import { useAiStore } from '../stores/aiStore'
+import { useConversationsStore } from '../stores/conversationsStore'
+import { conversationService } from '../services/conversationService'
 import { useUserStore } from '../stores/userStore'
 import AiMessageBubble from '../components/chat/AiMessageBubble'
 
@@ -40,6 +43,7 @@ export default function AiPage() {
     clearMessages,
     deleteAllMessages,
   } = useAiStore()
+  const conversations = useConversationsStore((s) => s.conversations)
 
   const [input, setInput] = useState('')
   const [initializing, setInitializing] = useState(true)
@@ -113,10 +117,53 @@ export default function AiPage() {
   }
 
   const handleNewChat = () => {
-    if (window.confirm('Bạn có chắc muốn bắt đầu đoạn chat mới? Lịch sử chat hiện tại sẽ bị xóa.')) {
-      clearMessages()
+    if (window.confirm('Bạn có chắc muốn bắt đầu đoạn chat mới? Lịch sử chat hiện tại sẽ được lưu vào lịch sử phòng chat.')) {
+      ;(async () => {
+        try {
+          await useAiStore.getState().startNewConversation()
+          // ensure UI is reset
+          setAutoScroll(true)
+          scrollToBottom('auto')
+          // Refresh conversations sidebar so the new AI conv appears
+          // (conversations store listens to conversation:joined events on server; refresh as fallback)
+          try { await import('../stores/conversationsStore').then(m=>m.useConversationsStore.getState().refresh()) } catch {}
+        } catch (err) {
+          console.error('Failed to start new AI conversation:', err)
+          alert('Không thể tạo đoạn chat mới. Vui lòng thử lại.')
+        }
+      })()
+    }
+  }
+
+  const [showHistory, setShowHistory] = useState(false)
+
+  const openConversation = async (conv) => {
+    setShowHistory(false)
+    try {
+      await useAiStore.getState().selectConversation(conv)
       setAutoScroll(true)
       scrollToBottom('auto')
+    } catch (err) {
+      console.error('Failed to open conversation:', err)
+      alert('Không thể mở lịch sử chat. Vui lòng thử lại.')
+    }
+  }
+
+  const archiveConversation = async (conv) => {
+    if (!window.confirm('Bạn có chắc muốn xóa cuộc trò chuyện khỏi lịch sử của bạn?')) return
+    try {
+      await conversationService.archive(conv.id)
+      // Refresh sidebar list
+      try { await useConversationsStore.getState().refresh() } catch {}
+      // If archived conversation is currently open, reset AI store
+      if (useAiStore.getState().conversation?.id === conv.id) {
+        useAiStore.getState().reset()
+        // ensure a fresh conversation exists
+        try { await useAiStore.getState().ensureConversation(); await useAiStore.getState().loadMessages(true) } catch {}
+      }
+    } catch (err) {
+      console.error('Failed to archive conversation:', err)
+      alert('Không thể xóa lịch sử. Vui lòng thử lại.')
     }
   }
 
@@ -160,6 +207,36 @@ export default function AiPage() {
           )}
           {!loading && messages.length > 0 && (
             <>
+              <div className="relative">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setShowHistory((s) => !s)}
+                  className="gap-1.5"
+                  title="Lịch sử chat"
+                >
+                  <History className="w-4 h-4" />
+                  <span className="hidden sm:inline">Lịch sử</span>
+                </Button>
+                {showHistory && (
+                  <div className="absolute right-0 mt-2 w-72 bg-card border rounded-lg shadow-lg z-50 p-2">
+                    <div className="text-sm font-medium px-2 py-1">Lịch sử cuộc trò chuyện</div>
+                    <div className="max-h-64 overflow-y-auto">
+                      {conversations.filter(c => c.members?.some(m => m.user?.email === 'ai-bot@system.local')).length === 0 && (
+                        <div className="p-2 text-xs text-muted-foreground">Không có lịch sử.</div>
+                      )}
+                      {conversations.filter(c => c.members?.some(m => m.user?.email === 'ai-bot@system.local')).map((c) => (
+                        <div key={c.id} className="flex items-center justify-between gap-2 px-2 py-2 hover:bg-muted rounded">
+                          <button className="text-left flex-1 truncate" onClick={() => openConversation(c)}>
+                            {c.lastMessagePreview ?? 'Cuộc trò chuyện AI'}
+                          </button>
+                          <button className="text-destructive text-sm ml-2" onClick={() => archiveConversation(c)} title="Xóa khỏi lịch sử">×</button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
               <Button
                 size="sm"
                 variant="ghost"

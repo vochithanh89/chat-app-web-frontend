@@ -54,6 +54,11 @@ export const conversationService = {
     return apiClient.post(`/conversations/${conversationId}/leave`, {})
   },
 
+  async archive(conversationId) {
+    const data = await apiClient.post(`/conversations/${conversationId}/archive`, {})
+    return data
+  },
+
   async updateMemberRole(conversationId, userId, role) {
     const data = await apiClient.put(
       `/conversations/${conversationId}/members/${userId}/role`,

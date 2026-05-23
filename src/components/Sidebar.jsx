@@ -28,6 +28,7 @@ import { formatDistanceToNow } from 'date-fns'
 
 const navItems = [
   { icon: MessageCircle, label: 'Chat', path: '/chat', badgeKey: 'chat' },
+  { icon: Hash, label: 'Groups', path: '/groups' },
   { icon: UserPlus, label: 'Friends', path: '/friends', badgeKey: 'friends' },
   { icon: BarChart3, label: 'Dashboard', path: '/dashboard' },
   { icon: Sparkles, label: 'AI', path: '/ai' },

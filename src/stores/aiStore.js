@@ -66,6 +66,36 @@ export const useAiStore = create((set, get) => ({
   },
 
   /**
+   * Force start a new AI conversation (creates a distinct conversation and
+   * clears messages locally). Useful for "New chat" behavior.
+   */
+  async startNewConversation() {
+    try {
+      const conv = await aiService.startNewConversation()
+      set({ conversation: conv, conversationLoaded: true, messages: [] })
+      return conv
+    } catch (err) {
+      set({ error: err?.message || 'Failed to start new AI conversation.' })
+      throw err
+    }
+  },
+
+  /**
+   * Select an existing AI conversation to view its history.
+   * Sets the conversation and forces loading its messages.
+   */
+  async selectConversation(conversation) {
+    try {
+      set({ conversation, conversationLoaded: true, messages: [] })
+      // Force reload messages for the selected conversation
+      await get().loadMessages(true)
+    } catch (err) {
+      set({ error: err?.message || 'Failed to load selected conversation.' })
+      throw err
+    }
+  },
+
+  /**
    * Load message history for the AI conversation.
    * Uses cache — won't re-fetch if messages already present.
    */
@@ -161,10 +191,10 @@ export const useAiStore = create((set, get) => ({
     if (!conv?.id || messages.length === 0) return
 
     try {
-      // Recall all messages (this marks them as deleted in database)
+      // Hide all messages for the current user instead of globally recalling them.
       const deletePromises = messages
         .filter(m => !m._optimistic) // Skip optimistic messages
-        .map(msg => messageService.recall(msg.id).catch(() => {})) // Ignore individual failures
+        .map(msg => messageService.deleteForMe(msg.id).catch(() => {})) // Ignore individual failures
       
       await Promise.all(deletePromises)
       

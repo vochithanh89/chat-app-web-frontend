@@ -16,6 +16,11 @@ export const aiService = {
     return data?.conversation ?? data
   },
 
+  async startNewConversation() {
+    const data = await apiClient.post('/ai/conversations/new')
+    return data?.conversation ?? data
+  },
+
   /**
    * Send a message to an AI conversation and receive the AI reply.
    * @param {string} conversationId - UUID of the AI conversation
